@@ -1,0 +1,75 @@
+import Expense from "../models/Expense.mjs";
+
+const addExpense = async (req, res) => {
+  try {
+    const { amount, category, date, description } = req.body;
+
+    if (!amount || !category || !date || !description) {
+      return res.status(400).json({
+        message: "All fields are required",
+      });
+    }
+
+    const newExpense = new Expense({
+      amount,
+      category,
+      date,
+      description,
+      user: req.user._id, 
+    });
+
+    const savedExpense = await newExpense.save();
+
+    return res.status(201).json(savedExpense);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+const getExpenses = async (req , res) =>{
+    try {
+        const {startDate , endDate , category , page = 1 , limit = 10} = req.query ;
+
+        // Always 
+        const filter = {
+            user : req.user._id 
+        }
+
+        if(category){
+            filter.category = category 
+        }
+
+        if(startDate || endDate){
+            filter.date = {} 
+            if(startDate){
+                filter.date.$gte = new Date(startDate)  
+            }
+            if(endDate){
+                filter.date.$lte = new Date(endDate) 
+            }
+        }
+
+        const pageNumber = Number(page) ;
+        const limitNumber = Number(limit) ;
+        const skip = (pageNumber - 1) * ( limitNumber ) ;
+
+        const Expenses = await Expense.find(filter).sort({date : -1}).skip(skip).limit(limitNumber) ;
+
+        const totalExpenses = await Expense.countDocuments(filter) ;
+
+        return res.status(200).json(
+            {
+                Expenses ,
+                totalExpenses ,
+                currentNumber : pageNumber ,
+                totalPages :  Math.ceil (totalExpenses)/limitNumber 
+            }
+        )
+    } catch (error) {
+        console.log(error) ;
+        return res.status(500).send("Internal Error") ;
+    }
+}
