@@ -73,3 +73,79 @@ const getExpenses = async (req , res) =>{
         return res.status(500).send("Internal Error") ;
     }
 }
+
+const  getExpenseAnalytics = async(req,res) =>{
+try {
+  const userId = req.user._id ;
+  const endDate = new Date() ;
+  const startDate = new Date() ;
+
+startDate.setMonth(startDate.getMonth() - 12) ; // 12 months back 
+
+  const analyticsResult = await Expense.aggregate(
+    [
+      // Always to filter first 
+      {
+        $match : {
+          userId : userId ,
+          date : {
+            $gte : $startDate ,
+            $lte : $endDate 
+          }
+        }
+      },
+
+      // parallel pipelines 
+      {
+        $facet : {
+          categoryStates : [
+            {
+              $group : {
+                _id : $category ,
+                $totalAmount : {$sum : $amount}
+              } ,
+            },
+            {
+              $sort : {totalAmount : - 1} 
+            }
+          ],
+          monthlyStates : [
+            {
+              $group : {
+                _id : {
+                  yearly : {$year : Date } ,
+                  monthly : {$month : Date}
+                },
+                totalAmount : {$sum : $amount} 
+              }
+            },
+            {
+              $sort : {
+                "_id.yearly" : 1 ,
+                "_id.monthly" : 1 
+              }
+            }
+          ]
+        }
+      }
+    ]
+  )
+
+  //Extracting data 
+
+  const {categoryStates , monthlyStates} = analyticsResult[0] ;
+
+res.status(200).json({
+      success: true,
+      categoryStats,
+      monthlyStats
+    });
+
+} catch (error) {
+     console.error("Expense analytics error:", error);
+     res.status(500).json({
+      success: false,
+      message: "Failed to get expense analytics"
+     });
+}
+}
