@@ -149,3 +149,10 @@ res.status(200).json({
      });
 }
 }
+
+const getPrediction = () =>{
+  const startDate = new Date() ; // start date of the month 
+  const todayDate = new Date() ;
+
+  
+}
