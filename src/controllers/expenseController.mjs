@@ -154,5 +154,10 @@ const getPrediction = () =>{
   const startDate = new Date() ; // start date of the month 
   const todayDate = new Date() ;
 
+  // making a new function here for the prediction 
+
+  const prediction = () =>{
+    
+  }
   
 }
