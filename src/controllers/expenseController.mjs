@@ -1,4 +1,6 @@
 import Expense from "../models/Expense.mjs";
+import Budget from "../models/Budget.mjs";
+import { predictEndOfMonth } from "../utils/forecast.mjs";
 
 export const addExpense = async (req, res) => {
   try {
@@ -15,7 +17,7 @@ export const addExpense = async (req, res) => {
       category,
       date,
       description,
-      user: req.user._id, 
+      user: req.user._id,
     });
 
     const savedExpense = await newExpense.save();
@@ -29,135 +31,192 @@ export const addExpense = async (req, res) => {
   }
 };
 
-export const getExpenses = async (req , res) =>{
-    try {
-        const {startDate , endDate , category , page = 1 , limit = 10} = req.query ;
+export const getExpenses = async (req, res) => {
+  try {
+    const { startDate, endDate, category, page = 1, limit = 10 } = req.query;
 
-        // Always 
-        const filter = {
-            user : req.user._id 
-        }
-
-        if(category){
-            filter.category = category 
-        }
-
-        if(startDate || endDate){
-            filter.date = {} 
-            if(startDate){
-                filter.date.$gte = new Date(startDate)  
-            }
-            if(endDate){
-                filter.date.$lte = new Date(endDate) 
-            }
-        }
-
-        const pageNumber = Number(page) ;
-        const limitNumber = Number(limit) ;
-        const skip = (pageNumber - 1) * ( limitNumber ) ;
-
-        const Expenses = await Expense.find(filter).sort({date : -1}).skip(skip).limit(limitNumber) ;
-
-        const totalExpenses = await Expense.countDocuments(filter) ;
-
-        return res.status(200).json(
-            {
-                Expenses ,
-                totalExpenses ,
-                currentNumber : pageNumber ,
-                totalPages :  Math.ceil (totalExpenses)/limitNumber 
-            }
-        )
-    } catch (error) {
-        console.log(error) ;
-        return res.status(500).send("Internal Error") ;
+    // Always 
+    const filter = {
+      user: req.user._id
     }
+
+    if (category) {
+      filter.category = category
+    }
+
+    if (startDate || endDate) {
+      filter.date = {}
+      if (startDate) {
+        filter.date.$gte = new Date(startDate)
+      }
+      if (endDate) {
+        filter.date.$lte = new Date(endDate)
+      }
+    }
+
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+    const skip = (pageNumber - 1) * (limitNumber);
+
+    const Expenses = await Expense.find(filter).sort({ date: -1 }).skip(skip).limit(limitNumber);
+
+    const totalExpenses = await Expense.countDocuments(filter);
+
+    return res.status(200).json(
+      {
+        Expenses,
+        totalExpenses,
+        currentNumber: pageNumber,
+        totalPages: Math.ceil(totalExpenses) / limitNumber
+      }
+    )
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send("Internal Error");
+  }
 }
 
-export const  getExpenseAnalytics = async(req,res) =>{
-try {
-  const userId = req.user._id ;
-  const endDate = new Date() ;
-  const startDate = new Date() ;
+export const getExpenseAnalytics = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const endDate = new Date();
+    const startDate = new Date();
 
-startDate.setMonth(startDate.getMonth() - 12) ; // 12 months back 
+    startDate.setMonth(startDate.getMonth() - 12); // 12 months back 
 
-  const analyticsResult = await Expense.aggregate(
-    [
-      // Always to filter first 
-      {
-        $match : {
-          userId : userId ,
-          date : {
-            $gte : $startDate ,
-            $lte : $endDate 
+    const analyticsResult = await Expense.aggregate(
+      [
+        // Always to filter first 
+        {
+          $match: {
+            userId: userId,
+            date: {
+              $gte: $startDate,
+              $lte: $endDate
+            }
+          }
+        },
+
+        // parallel pipelines 
+        {
+          $facet: {
+            categoryStates: [
+              {
+                $group: {
+                  _id: $category,
+                  $totalAmount: { $sum: $amount }
+                },
+              },
+              {
+                $sort: { totalAmount: - 1 }
+              }
+            ],
+            monthlyStates: [
+              {
+                $group: {
+                  _id: {
+                    yearly: { $year: Date },
+                    monthly: { $month: Date }
+                  },
+                  totalAmount: { $sum: $amount }
+                }
+              },
+              {
+                $sort: {
+                  "_id.yearly": 1,
+                  "_id.monthly": 1
+                }
+              }
+            ]
           }
         }
-      },
+      ]
+    )
 
-      // parallel pipelines 
-      {
-        $facet : {
-          categoryStates : [
-            {
-              $group : {
-                _id : $category ,
-                $totalAmount : {$sum : $amount}
-              } ,
-            },
-            {
-              $sort : {totalAmount : - 1} 
-            }
-          ],
-          monthlyStates : [
-            {
-              $group : {
-                _id : {
-                  yearly : {$year : Date } ,
-                  monthly : {$month : Date}
-                },
-                totalAmount : {$sum : $amount} 
-              }
-            },
-            {
-              $sort : {
-                "_id.yearly" : 1 ,
-                "_id.monthly" : 1 
-              }
-            }
-          ]
-        }
-      }
-    ]
-  )
+    //Extracting data 
 
-  //Extracting data 
+    const { categoryStates, monthlyStates } = analyticsResult[0];
 
-  const {categoryStates , monthlyStates} = analyticsResult[0] ;
-
-res.status(200).json({
+    res.status(200).json({
       success: true,
       categoryStats,
       monthlyStats
     });
 
-} catch (error) {
-     console.error("Expense analytics error:", error);
-     res.status(500).json({
+  } catch (error) {
+    console.error("Expense analytics error:", error);
+    res.status(500).json({
       success: false,
       message: "Failed to get expense analytics"
-     });
-}
-}
-
-const getPrediction = () =>{
-  const startDate = new Date() ; // start date of the month 
-  const todayDate = new Date() ;
-
-  // making a new function here for the prediction 
-
-  const prediction = () =>{
-    
+    });
   }
-  
+}
+
+export const getBudgetForecast = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // 1. Aggregation Pipeline
+    const dailyExpenses = await Expense.aggregate([
+      {
+        $match: {
+          user: userId,
+          date: { $gte: startOfMonth, $lte: now } // Match expenses for this month up to now
+        }
+      },
+      {
+        $group: {
+          _id: { $dayOfMonth: "$date" }, // Extract day
+          totalAmount: { $sum: "$amount" }
+        }
+      },
+      {
+        $sort: { "_id": 1 } // Sort by day ascending
+      }
+    ]);
+
+
+    // 2. Data Transformation for Utility
+    const dailySpending = dailyExpenses.map(item => ({
+      day: item._id,
+      amount: item.totalAmount
+    }));
+
+    if (dailySpending.length === 0) {
+      return res.status(200).json({
+        predictedTotal: 0,
+        budgetLimit: 0,
+        status: 'On Track', // Or specific "No Data" status
+        message: "No expenses found for this month."
+      });
+    }
+
+    // 3. Call Utility
+    const predictedTotal = predictEndOfMonth(dailySpending);
+
+    // 4. Budget Comparison
+    const budgets = await Budget.find({
+      userId: userId,
+      period: 'monthly'
+    });
+
+    const budgetLimit = budgets.reduce((acc, curr) => acc + curr.amount, 0);
+
+    let status = 'On Track';
+    if (budgetLimit > 0 && predictedTotal > budgetLimit) {
+      status = 'Danger';
+    }
+
+    return res.status(200).json({
+      predictedTotal,
+      budgetLimit,
+      status
+    });
+
+  } catch (error) {
+    console.error("Prediction error:", error);
+    return res.status(500).json({ message: "Error calculating forecast" });
+  }
 }
