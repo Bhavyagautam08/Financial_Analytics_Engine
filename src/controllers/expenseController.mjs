@@ -1,6 +1,7 @@
 import Expense from "../models/Expense.mjs";
 import Budget from "../models/Budget.mjs";
 import { predictEndOfMonth } from "../utils/forecast.mjs";
+import mongoose from "mongoose";
 
 export const addExpense = async (req, res) => {
   try {
@@ -17,7 +18,7 @@ export const addExpense = async (req, res) => {
       category,
       date,
       description,
-      user: req.user._id,
+      userId: req.user._id,
     });
 
     const savedExpense = await newExpense.save();
@@ -37,7 +38,7 @@ export const getExpenses = async (req, res) => {
 
     // Always 
     const filter = {
-      user: req.user._id
+      userId: req.user._id
     }
 
     if (category) {
@@ -78,7 +79,7 @@ export const getExpenses = async (req, res) => {
 
 export const getExpenseAnalytics = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = new mongoose.Types.ObjectId(req.user._id);
     const endDate = new Date();
     const startDate = new Date();
 
@@ -91,8 +92,8 @@ export const getExpenseAnalytics = async (req, res) => {
           $match: {
             userId: userId,
             date: {
-              $gte: $startDate,
-              $lte: $endDate
+              $gte: startDate,
+              $lte: endDate
             }
           }
         },
@@ -100,25 +101,25 @@ export const getExpenseAnalytics = async (req, res) => {
         // parallel pipelines 
         {
           $facet: {
-            categoryStates: [
+            categoryStats: [
               {
                 $group: {
-                  _id: $category,
-                  $totalAmount: { $sum: $amount }
+                  _id: "$category",
+                  totalAmount: { $sum: "$amount" }
                 },
               },
               {
-                $sort: { totalAmount: - 1 }
+                $sort: { totalAmount: -1 }
               }
             ],
-            monthlyStates: [
+            monthlyStats: [
               {
                 $group: {
                   _id: {
-                    yearly: { $year: Date },
-                    monthly: { $month: Date }
+                    yearly: { $year: "$date" },
+                    monthly: { $month: "$date" }
                   },
-                  totalAmount: { $sum: $amount }
+                  totalAmount: { $sum: "$amount" }
                 }
               },
               {
@@ -131,11 +132,10 @@ export const getExpenseAnalytics = async (req, res) => {
           }
         }
       ]
-    )
+    );
 
     //Extracting data 
-
-    const { categoryStates, monthlyStates } = analyticsResult[0];
+    const { categoryStats, monthlyStats } = analyticsResult[0];
 
     res.status(200).json({
       success: true,
@@ -154,7 +154,7 @@ export const getExpenseAnalytics = async (req, res) => {
 
 export const getBudgetForecast = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = new mongoose.Types.ObjectId(req.user._id);
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -162,7 +162,7 @@ export const getBudgetForecast = async (req, res) => {
     const dailyExpenses = await Expense.aggregate([
       {
         $match: {
-          user: userId,
+          userId: userId,
           date: { $gte: startOfMonth, $lte: now } // Match expenses for this month up to now
         }
       },
@@ -220,3 +220,49 @@ export const getBudgetForecast = async (req, res) => {
     return res.status(500).json({ message: "Error calculating forecast" });
   }
 }
+
+// Update an expense
+export const updateExpense = async (req, res) => {
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user._id);
+    const { id } = req.params;
+    const { amount, category, date, description } = req.body;
+
+    const expense = await Expense.findOneAndUpdate(
+      { _id: id, userId },
+      { amount, category, date, description },
+      { new: true }
+    );
+
+    if (!expense) {
+      return res.status(404).json({ message: "Expense not found" });
+    }
+
+    return res.status(200).json({
+      message: "Expense updated",
+      expense
+    });
+  } catch (error) {
+    console.error("Update Expense Error:", error);
+    return res.status(500).json({ message: "Failed to update expense" });
+  }
+};
+
+// Delete an expense
+export const deleteExpense = async (req, res) => {
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user._id);
+    const { id } = req.params;
+
+    const expense = await Expense.findOneAndDelete({ _id: id, userId });
+
+    if (!expense) {
+      return res.status(404).json({ message: "Expense not found" });
+    }
+
+    return res.status(200).json({ message: "Expense deleted successfully" });
+  } catch (error) {
+    console.error("Delete Expense Error:", error);
+    return res.status(500).json({ message: "Failed to delete expense" });
+  }
+};

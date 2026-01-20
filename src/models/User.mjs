@@ -4,14 +4,14 @@ import bcrypt from "bcrypt";
 const userSchema = new mongoose.Schema(
   {
     username: {
-      type: String,         
+      type: String,
       unique: true,
       required: true,
       trim: true
     },
 
     email: {
-      type: String,      
+      type: String,
       unique: true,
       required: true,
       index: true,
@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema(
     },
 
     password: {
-      type: String,        
+      type: String,
       required: true
     },
 
@@ -33,15 +33,14 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
 
   try {
     const saltRounds = 10;
     this.password = await bcrypt.hash(this.password, saltRounds);
-    next();
   } catch (error) {
-    next(error);
+    throw new Error(error);
   }
 });
 

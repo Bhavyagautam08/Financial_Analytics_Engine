@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@theme {
+    --color-slate-950: #020617;
+    --font-inter: 'Inter', sans-serif;
+    --animate-spin-slow: spin 20s linear infinite;
+}
+
+@layer base {
+    body {
+        @apply bg-slate-950 text-slate-200 antialiased selection:bg-violet-500/30;
+        font-family: var(--font-inter);
+    }
+}
+
+.glass {
+    @apply bg-slate-900/50 backdrop-blur-xl border border-white/5;
+}
+
+.glass-card {
+    @apply bg-slate-900/60 backdrop-blur-2xl border border-white/10 shadow-xl shadow-black/20;
+}
+
+.input-field {
+    @apply w-full px-4 py-3 bg-slate-950/50 border border-white/5 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all text-slate-200 placeholder-slate-500;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    @apply bg-slate-950;
+}
+
+::-webkit-scrollbar-thumb {
+    @apply bg-slate-800 rounded-full hover:bg-slate-700 transition-colors;
+}

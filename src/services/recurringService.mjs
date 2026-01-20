@@ -1,3 +1,6 @@
+import RecurringTransactions from "../models/RecurringTransactions.mjs";
+import Expense from "../models/Expense.mjs";
+
 export const processRecurringTransactions = async () => {
     try {
         const recurringDocuments = await RecurringTransactions.find({
