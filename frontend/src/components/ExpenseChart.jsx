@@ -67,17 +67,13 @@ const ExpenseChart = ({ data, loading }) => {
         maintainAspectRatio: false,
     };
 
-    // Construct chart data logic
+    // Construct chart data logic for daily activity
     const chartData = {
-        labels: data?.monthlyStats?.map(item => {
-            // Format month nicely if needed, assuming aggregate returns month number
-            // or if item._id is structured
-            return item._id?.monthly ? `${item._id.monthly}/${item._id.yearly}` : item.month;
-        }) || [],
+        labels: data?.dailyStats?.map(item => `Day ${item._id}`) || [],
         datasets: [
             {
                 label: 'Expenses',
-                data: data?.monthlyStats?.map(item => item.totalAmount) || [],
+                data: data?.dailyStats?.map(item => item.totalAmount) || [],
                 backgroundColor: (context) => {
                     const ctx = context.chart.ctx;
                     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
@@ -94,7 +90,7 @@ const ExpenseChart = ({ data, loading }) => {
     return (
         <div className="glass-card p-6 rounded-2xl h-[400px]">
             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-white">Monthly Activity</h3>
+                <h3 className="text-lg font-semibold text-white">Daily Activity (This Month)</h3>
                 <div className="flex gap-2">
                     <span className="w-3 h-3 rounded-full bg-violet-500"></span>
                     <span className="text-xs text-slate-400">Expenses</span>

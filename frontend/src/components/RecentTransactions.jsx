@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
-import { ShoppingBag, Coffee, Car, Home, Activity, DollarSign } from 'lucide-react';
+import { ShoppingBag, Coffee, Car, Home, Activity, DollarSign, RefreshCw } from 'lucide-react';
 
 const CategoryIcon = ({ category }) => {
     const lowerCat = category?.toLowerCase() || '';
@@ -23,8 +23,8 @@ const RecentTransactions = ({ refreshTrigger }) => {
                     params: { limit: 5, page: 1 }
                 });
 
-                // Adjust based on your actual API response which puts data in 'Expenses' key
-                setTransactions(res.data.Expenses || []);
+                // Adjust based on your actual API response which puts data in 'expenses' key
+                setTransactions(res.data.expenses || []);
                 setLoading(false);
             } catch (err) {
                 console.error("Failed to fetch recent transactions", err);
@@ -50,9 +50,17 @@ const RecentTransactions = ({ refreshTrigger }) => {
                                     <CategoryIcon category={tx.category} />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-medium text-slate-200 group-hover:text-white transition-colors">
-                                        {tx.description}
-                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-sm font-medium text-slate-200 group-hover:text-white transition-colors">
+                                            {tx.description}
+                                        </p>
+                                        {tx.isRecurring && (
+                                            <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
+                                                <RefreshCw size={10} />
+                                                Recurring
+                                            </span>
+                                        )}
+                                    </div>
                                     <p className="text-xs text-slate-500">
                                         {new Date(tx.date).toLocaleDateString()}
                                     </p>

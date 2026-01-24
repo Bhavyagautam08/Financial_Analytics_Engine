@@ -6,6 +6,7 @@ import ExpenseChart from './components/ExpenseChart';
 import RecentTransactions from './components/RecentTransactions';
 import ExpenseForm from './components/ExpenseForm';
 import BudgetForm from './components/BudgetForm';
+import { getAvatarDisplay } from './components/AvatarSelector';
 import { Wallet, TrendingUp, AlertCircle, Target, RefreshCw } from 'lucide-react';
 
 const Dashboard = () => {
@@ -13,20 +14,23 @@ const Dashboard = () => {
     const [analytics, setAnalytics] = useState({ categoryStats: [], monthlyStats: [] });
     const [forecast, setForecast] = useState({ predictedTotal: 0, budgetLimit: 0, status: 'Loading...' });
     const [budget, setBudget] = useState({ totalMonthlyBudget: 0 });
+    const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     const fetchData = async () => {
         try {
-            const [analyticsRes, forecastRes, budgetRes] = await Promise.all([
+            const [analyticsRes, forecastRes, budgetRes, profileRes] = await Promise.all([
                 api.get('/expenses/analytics'),
                 api.get('/forecast'),
-                api.get('/budgets')
+                api.get('/budgets'),
+                api.get('/auth/profile')
             ]);
 
             setAnalytics(analyticsRes.data);
             setForecast(forecastRes.data);
             setBudget(budgetRes.data);
+            setUser(profileRes.data);
             setLoading(false);
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -47,7 +51,7 @@ const Dashboard = () => {
     };
 
     const calculateTotalSpent = () => {
-        return analytics.monthlyStats?.reduce((acc, curr) => acc + curr.totalAmount, 0) || 0;
+        return analytics.dailyStats?.reduce((acc, curr) => acc + curr.totalAmount, 0) || 0;
     };
 
     const calculateRemainingBudget = () => {
@@ -86,9 +90,11 @@ const Dashboard = () => {
                         </div>
                         <div
                             onClick={handleAvatarClick}
-                            className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 border-2 border-slate-900 shadow-lg cursor-pointer hover:opacity-80 transition"
+                            className={`w-10 h-10 rounded-full bg-gradient-to-br ${user ? getAvatarDisplay(user.avatar).color : 'from-violet-500 to-fuchsia-500'} border-2 border-slate-900 shadow-lg cursor-pointer hover:opacity-80 hover:scale-105 transition flex items-center justify-center text-lg`}
                             title="Go to Profile"
-                        ></div>
+                        >
+                            {user ? getAvatarDisplay(user.avatar).emoji : ''}
+                        </div>
                     </div>
                 </header>
 

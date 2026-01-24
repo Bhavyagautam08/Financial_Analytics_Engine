@@ -85,3 +85,29 @@ export const getProfile = async (req, res) => {
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
+
+// Update user avatar
+export const updateAvatar = async (req, res) => {
+    try {
+        const { avatar } = req.body;
+        const validAvatars = ["avatar1", "avatar2", "avatar3", "avatar4", "avatar5", "avatar6", "avatar7", "avatar8"];
+
+        if (!avatar || !validAvatars.includes(avatar)) {
+            return res.status(400).json({ message: "Invalid avatar selection" });
+        }
+
+        const user = await User.findByIdAndUpdate(
+            req.user._id,
+            { avatar },
+            { new: true }
+        ).select("-password");
+
+        return res.status(200).json({
+            message: "Avatar updated successfully",
+            user
+        });
+    } catch (error) {
+        console.error("Avatar Update Error:", error);
+        return res.status(500).json({ message: "Server error" });
+    }
+};

@@ -55,22 +55,26 @@ export const getExpenses = async (req, res) => {
       }
     }
 
-    const pageNumber = Number(page);
-    const limitNumber = Number(limit);
-    const skip = (pageNumber - 1) * (limitNumber);
+    const pageNumber = Math.max(1, Number(page));
+    const limitNumber = Math.min(100, Math.max(1, Number(limit))); // Max 100 per page
+    const skip = (pageNumber - 1) * limitNumber;
 
-    const Expenses = await Expense.find(filter).sort({ date: -1 }).skip(skip).limit(limitNumber);
+    const expenses = await Expense.find(filter).sort({ date: -1 }).skip(skip).limit(limitNumber);
 
     const totalExpenses = await Expense.countDocuments(filter);
+    const totalPages = Math.ceil(totalExpenses / limitNumber);
 
-    return res.status(200).json(
-      {
-        Expenses,
-        totalExpenses,
-        currentNumber: pageNumber,
-        totalPages: Math.ceil(totalExpenses) / limitNumber
+    return res.status(200).json({
+      expenses,
+      pagination: {
+        currentPage: pageNumber,
+        totalPages,
+        totalItems: totalExpenses,
+        itemsPerPage: limitNumber,
+        hasNextPage: pageNumber < totalPages,
+        hasPrevPage: pageNumber > 1
       }
-    )
+    })
   } catch (error) {
     console.log(error);
     return res.status(500).send("Internal Error");
@@ -83,7 +87,9 @@ export const getExpenseAnalytics = async (req, res) => {
     const endDate = new Date();
     const startDate = new Date();
 
-    startDate.setMonth(startDate.getMonth() - 12); // 12 months back 
+    // Get data for current month (daily view)
+    startDate.setDate(1); // Start of current month
+    startDate.setHours(0, 0, 0, 0);
 
     const analyticsResult = await Expense.aggregate(
       [
@@ -112,21 +118,15 @@ export const getExpenseAnalytics = async (req, res) => {
                 $sort: { totalAmount: -1 }
               }
             ],
-            monthlyStats: [
+            dailyStats: [
               {
                 $group: {
-                  _id: {
-                    yearly: { $year: "$date" },
-                    monthly: { $month: "$date" }
-                  },
+                  _id: { $dayOfMonth: "$date" },
                   totalAmount: { $sum: "$amount" }
                 }
               },
               {
-                $sort: {
-                  "_id.yearly": 1,
-                  "_id.monthly": 1
-                }
+                $sort: { "_id": 1 }
               }
             ]
           }
@@ -135,12 +135,12 @@ export const getExpenseAnalytics = async (req, res) => {
     );
 
     //Extracting data 
-    const { categoryStats, monthlyStats } = analyticsResult[0];
+    const { categoryStats, dailyStats } = analyticsResult[0];
 
     res.status(200).json({
       success: true,
       categoryStats,
-      monthlyStats
+      dailyStats
     });
 
   } catch (error) {

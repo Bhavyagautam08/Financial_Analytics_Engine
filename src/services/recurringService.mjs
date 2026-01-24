@@ -15,7 +15,8 @@ export const processRecurringTransactions = async () => {
                     amount: recurring.amount,
                     category: recurring.category,
                     date: new Date(),
-                    description: `Auto-generated: ${recurring.title || "Recurring Expense"}`
+                    description: `Auto-generated: ${recurring.description || recurring.title || recurring.category} (${recurring.frequency})`,
+                    isRecurring: true
                 });
 
                 let nextDate = new Date(recurring.nextRunDate);
