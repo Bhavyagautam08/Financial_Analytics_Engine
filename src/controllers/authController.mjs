@@ -10,9 +10,12 @@ export const register = async (req, res) => {
             return res.status(400).json({ message: "All fields are required" });
         }
 
-        const existingUser = await User.findOne({ email });
+        const existingUser = await User.findOne({ $or: [{ email }, { username }] });
         if (existingUser) {
-            return res.status(400).json({ message: "User already exists" });
+            if (existingUser.email === email.toLowerCase()) {
+                return res.status(400).json({ message: "Email already in use" });
+            }
+            return res.status(400).json({ message: "Username already taken" });
         }
 
         const newUser = new User({
@@ -33,6 +36,11 @@ export const register = async (req, res) => {
         });
 
     } catch (error) {
+        // Handle MongoDB duplicate key errors as a safety net
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern)[0];
+            return res.status(400).json({ message: `${field.charAt(0).toUpperCase() + field.slice(1)} already in use` });
+        }
         console.error("Register Error:", error);
         return res.status(500).json({ message: "Internal Server Error" });
     }
