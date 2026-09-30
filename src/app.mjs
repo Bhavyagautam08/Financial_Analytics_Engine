@@ -1,11 +1,12 @@
-import express from "express";
-import { processRecurringTransactions } from "./services/recurringService.mjs";
 import dotenv from "dotenv";
-import expenseRoutes from "./routes/expenseRoutes.mjs";
-import authRoutes from "./routes/authRoutes.mjs";
-import "./jobs/cronJob.mjs";
+dotenv.config();
+
+import express from "express";
 import cors from "cors";
 import connectDB from "./config/db.mjs";
+import expenseRoutes from "./routes/expenseRoutes.mjs";
+import authRoutes from "./routes/authRoutes.mjs";
+import { processRecurringTransactions } from "./services/recurringService.mjs";
 
 // Rate Limiting
 import { apiLimiter, authLimiter, docsLimiter } from "./middlewares/rateLimiter.mjs";
@@ -13,18 +14,40 @@ import { apiLimiter, authLimiter, docsLimiter } from "./middlewares/rateLimiter.
 // Swagger Documentation
 import { swaggerSpec, swaggerUi } from "./config/swagger.mjs";
 
-dotenv.config();
+// Only start cron jobs in non-serverless (local dev) environments
+if (process.env.NODE_ENV !== "production") {
+    const { default: cronSetup } = await import("./jobs/cronJob.mjs");
+}
 
-connectDB();
+let isConnected = false;
+
+const connectOnce = async () => {
+    if (!isConnected) {
+        await connectDB();
+        isConnected = true;
+    }
+};
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
+// Middleware to ensure DB is connected before every request
+app.use(async (req, res, next) => {
+    try {
+        await connectOnce();
+        next();
+    } catch (err) {
+        console.error("DB connection failed:", err);
+        return res.status(500).json({ message: "Database connection failed" });
+    }
+});
+
 // Apply rate limiters
-app.use("/api/v1/auth", authLimiter);  // Stricter limit for auth
-app.use("/api/v1", apiLimiter);         // General API limit
-app.use("/api-docs", docsLimiter);      // Docs limit
+app.use("/api/v1/auth", authLimiter);
+app.use("/api/v1", apiLimiter);
+app.use("/api-docs", docsLimiter);
 
 // Routes
 app.use("/api/v1", expenseRoutes);
@@ -58,7 +81,7 @@ app.get("/api/v1/cron/recurring", async (req, res) => {
 
 const PORT = process.env.PORT || 4000;
 
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== "production") {
     app.listen(PORT, () => {
         console.log(`Server is live on ${PORT}`);
         console.log(`API Docs available at http://localhost:${PORT}/api-docs`);
