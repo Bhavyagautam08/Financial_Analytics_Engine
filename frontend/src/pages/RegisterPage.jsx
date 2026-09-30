@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../api';
 
 const RegisterPage = () => {
@@ -101,9 +101,9 @@ const RegisterPage = () => {
                     </button>
 
                     <div className="text-center mt-4">
-                        <a href="/login" className="text-sm text-violet-400 hover:text-violet-300">
+                        <Link to="/login" className="text-sm text-violet-400 hover:text-violet-300">
                             Already have an account? Sign in
-                        </a>
+                        </Link>
                     </div>
                 </form>
             </div>

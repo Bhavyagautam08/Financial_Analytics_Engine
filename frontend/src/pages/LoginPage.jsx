@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../api';
 
 const LoginPage = () => {
@@ -15,23 +15,10 @@ const LoginPage = () => {
         setError('');
 
         try {
-            // Need to verify the exact login endpoint in backend
-            // Assuming /auth/login based on plan, but will check routes if fail.
-            // Earlier controllers list showed expenseController, let's assume standard auth.
-            // If strictly no auth routes exist, I might need to create them or check app.mjs
-
-            // Checking earlier file list... src/routes/expenseRoutes.mjs exists.
-            // I should have checked for auth routes.
-            // Warning: If no auth backend exists, I might need to mock or implement it. 
-            // The prompt implies "make login page", assuming backend supports it or I just make the UI.
-            // But usually "make login page" implies functionality.
-            // Let's assume standard /users/login or /auth/login.
-            // I'll check app.mjs in next step to be sure of the route.
-
             const res = await api.post('/auth/login', { email, password });
 
             localStorage.setItem('token', res.data.token);
-            localStorage.setItem('userId', res.data.userId); // Adjust based on response
+            localStorage.setItem('userId', res.data.userId);
 
             navigate('/');
         } catch (err) {
@@ -92,9 +79,9 @@ const LoginPage = () => {
                     </button>
 
                     <div className="text-center mt-4">
-                        <a href="/register" className="text-sm text-violet-400 hover:text-violet-300">
+                        <Link to="/register" className="text-sm text-violet-400 hover:text-violet-300">
                             Don't have an account? Sign up
-                        </a>
+                        </Link>
                     </div>
                 </form>
             </div>
