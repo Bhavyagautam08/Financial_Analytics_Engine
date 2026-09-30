@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "src/app.mjs",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "src/app.mjs"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/v1/cron/recurring",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}
